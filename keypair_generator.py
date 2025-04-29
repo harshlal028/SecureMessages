@@ -78,7 +78,36 @@ def load_keypair(name_prefix, password=None):
 
     return private_key, public_key
 
-def encrypt_message(message, public_key):
+def sign_message(message, private_key):
+    # Sign the message using the private key
+    signature = private_key.sign(
+        message.encode(),
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256()
+    )
+    return signature.hex()
+
+def verify_signature(message, signature, public_key):
+    # Verify the signature using the public key
+    try:
+        public_key.verify(
+            bytes.fromhex(signature),
+            message.encode(),
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+        return True
+    except Exception as e:
+        print("Signature verification failed:", e)
+        return False
+
+def encrypted_message(message, public_key):
     # Encrypt the message using the public key
     ciphertext = public_key.encrypt(
         message.encode(),
@@ -90,7 +119,7 @@ def encrypt_message(message, public_key):
     )
     return ciphertext.hex()
 
-def decrypt_message(ciphertext, private_key):
+def decrypted_message(ciphertext, private_key):
     # Decrypt the message using the private key
     plaintext = private_key.decrypt(
         bytes.fromhex(ciphertext),
@@ -108,7 +137,11 @@ print("Private key loaded successfully.", priv_key)
 print("Public key loaded successfully.", pub_key)
 message = "Hello, World!"
 print("Original message:", message)
-encrypt_message = encrypt_message(message, pub_key)
-print("Encrypted message:", encrypt_message)
-decrypt_message = decrypt_message(encrypt_message, priv_key)
-print("Decrypted message:", decrypt_message)
+encrypted_message = encrypted_message(message, pub_key)
+print("Encrypted message:", encrypted_message[:11])
+signature = sign_message(encrypted_message, priv_key)
+print("Signature:", signature[:11])
+decrypted_message = decrypted_message(encrypted_message, priv_key)
+print("Decrypted message:", decrypted_message)
+is_verified = verify_signature(encrypted_message, signature, pub_key)
+print("Signature verified:", is_verified)
